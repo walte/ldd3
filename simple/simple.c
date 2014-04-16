@@ -15,7 +15,7 @@
  * $Id: simple.c,v 1.12 2005/01/31 16:15:31 rubini Exp $
  */
 
-#include <linux/config.h>
+//#include <linux/config.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -89,6 +89,8 @@ static int simple_remap_mmap(struct file *filp, struct vm_area_struct *vma)
 			    vma->vm_page_prot))
 		return -EAGAIN;
 
+	printk(KERN_NOTICE "%x, %x, %x, %x, %x\n", vma->vm_end - vma->vm_start,
+			vma->vm_start, vma->vm_pgoff, vma->vm_end, vma->vm_page_prot);
 	vma->vm_ops = &simple_remap_vm_ops;
 	simple_vma_open(vma);
 	return 0;
@@ -112,7 +114,8 @@ struct page *simple_vma_nopage(struct vm_area_struct *vma,
 	printk (KERN_NOTICE "VA is %p\n", __va (physaddr));
 	printk (KERN_NOTICE "Page at %p\n", virt_to_page (__va (physaddr)));
 	if (!pfn_valid(pageframe))
-		return NOPAGE_SIGBUS;
+		//return NOPAGE_SIGBUS;
+		return -1;
 	pageptr = pfn_to_page(pageframe);
 	printk (KERN_NOTICE "page->index = %ld mapping %p\n", pageptr->index, pageptr->mapping);
 	printk (KERN_NOTICE "Page frame %ld\n", pageframe);
@@ -122,10 +125,43 @@ struct page *simple_vma_nopage(struct vm_area_struct *vma,
 	return pageptr;
 }
 
+static int simple_vma_fault(struct vm_area_struct *vma,  
+		                    struct vm_fault *vmf)
+{
+	unsigned long address = (unsigned long)vmf->virtual_address;
+	int *type = &vmf->flags;
+
+	struct page *pageptr;
+	unsigned long offset = vma->vm_pgoff << PAGE_SHIFT;
+	unsigned long physaddr = address - vma->vm_start + offset;
+	unsigned long pageframe = physaddr >> PAGE_SHIFT;
+	
+	pgoff_t pgoff = vmf->pgoff;
+
+// Eventually remove these printks
+	printk (KERN_NOTICE "---- Nopage, off %lx phys %lx\n", offset, physaddr);
+	printk (KERN_NOTICE "VA is %p\n", __va (physaddr));
+	printk (KERN_NOTICE "Page at %p\n", virt_to_page (__va (physaddr)));
+	if (!pfn_valid(pageframe))
+		//return NOPAGE_SIGBUS;
+		return -1;
+	pageptr = pfn_to_page(pageframe);
+	printk (KERN_NOTICE "page->index = %ld mapping %p\n", pageptr->index, pageptr->mapping);
+	printk (KERN_NOTICE "Page frame %ld\n", pageframe);
+	get_page(pageptr);
+	if (type)
+		*type = VM_FAULT_MINOR;
+	return 0;
+
+
+
+}
+
 static struct vm_operations_struct simple_nopage_vm_ops = {
 	.open =   simple_vma_open,
 	.close =  simple_vma_close,
-	.nopage = simple_vma_nopage,
+	//.nopage = simple_vma_nopage,
+	.fault = simple_vma_fault,
 };
 
 static int simple_nopage_mmap(struct file *filp, struct vm_area_struct *vma)

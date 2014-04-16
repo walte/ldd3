@@ -28,6 +28,8 @@
 #include <linux/cdev.h>
 #include <asm/uaccess.h>
 
+#include <linux/sched.h>
+
 #include "scull.h"		/* local definitions */
 
 struct scull_pipe {

@@ -15,7 +15,6 @@
  * $Id: _main.c.in,v 1.21 2004/10/14 20:11:39 corbet Exp $
  */
 
-#include <linux/config.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -436,7 +435,7 @@ static int scullp_defer_op(int write, struct kiocb *iocb, char __user *buf,
 		return result; /* No memory, just complete now */
 	stuff->iocb = iocb;
 	stuff->result = result;
-	INIT_WORK(&stuff->work, scullp_do_deferred_op, stuff);
+	INIT_WORK(&stuff->work, scullp_do_deferred_op);
 	schedule_delayed_work(&stuff->work, HZ/100);
 	return -EIOCBQUEUED;
 }
